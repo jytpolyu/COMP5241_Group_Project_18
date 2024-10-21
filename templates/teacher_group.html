@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Group Stats{% endblock %}
+
+{% block content %}
+<h3>Group Stats</h3>
+<div class="row mb-3">
+    <div class="col-md-4">
+        <input type="text" id="searchInput" class="form-control" placeholder="Enter Group ID to search">
+    </div>
+    <div class="col-md-4">
+        <select id="activityTypeSelect" class="form-select">
+            <option value="">Select Activity Type</option>
+            {% for activity_type in activity_types %}
+            <option value="{{ activity_type.activity_type }}">{{ activity_type.activity_type }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button class="btn btn-dark" id="searchButton">Search</button>
+    </div>
+    <div class="col-md-2 text-end">
+        <button class="btn btn-info" id="groupInfoButton">Group Info</button>
+    </div>
+</div>
+<div class="row">
+    <div class="col s12">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Group ID</th>
+                    <th>Activity Type</th>
+                    <th>Activity Count</th>
+                </tr>
+            </thead>
+            <tbody id="groupStatsTableBody">
+                <!-- Data will be populated by JavaScript -->
+            </tbody>
+        </table>
+        <nav>
+            <ul class="pagination justify-content-center" id="pagination">
+                <!-- Pagination will be populated by JavaScript -->
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- Group Info Modal -->
+<div class="modal fade" id="groupInfoModal" tabindex="-1" aria-labelledby="groupInfoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="groupInfoModalLabel">Group Info</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Group ID</th>
+                            <th>Leader Name</th>
+                            <th>Member Names</th>
+                        </tr>
+                    </thead>
+                    <tbody id="groupInfoTableBody">
+                        <!-- Data will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const perPage = 10;
+
+        document.getElementById('searchButton').addEventListener('click', function() {
+            var searchTerm = document.getElementById('searchInput').value;
+            var activityType = document.getElementById('activityTypeSelect').value;
+            fetch(`{{ url_for('search_group') }}?search_term=${searchTerm}&activity_type=${activityType}`)
+                .then(response => response.json())
+                .then(data => {
+                    updateTableAndPagination(data.data);
+                });
+        });
+
+        document.getElementById('groupInfoButton').addEventListener('click', function() {
+            fetch(`{{ url_for('group_info') }}`)
+                .then(response => response.json())
+                .then(data => {
+                    var tableBody = document.getElementById('groupInfoTableBody');
+                    tableBody.innerHTML = '';
+                    data.forEach(function(item) {
+                        var tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${item.group_id}</td>
+                            <td>${item.leader_name}</td>
+                            <td>${item.member_names}</td>
+                        `;
+                        tableBody.appendChild(tr);
+                    });
+                    new bootstrap.Modal(document.getElementById('groupInfoModal')).show();
+                });
+        });
+
+        function loadGroupStats() {
+            fetch(`{{ url_for('teacher_group') }}`)
+                .then(response => response.json())
+                .then(data => {
+                    updateTableAndPagination(data);
+                });
+        }
+
+        function updateTableAndPagination(data) {
+            var tableBody = document.getElementById('groupStatsTableBody');
+            tableBody.innerHTML = '';
+            var totalPages = Math.ceil(data.length / perPage);
+            var currentPage = 1;
+
+            function renderTable(page) {
+                tableBody.innerHTML = '';
+                var start = (page - 1) * perPage;
+                var end = start + perPage;
+                var pageData = data.slice(start, end);
+
+                pageData.forEach(function(item) {
+                    var tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${item.group_id}</td>
+                        <td>${item.activity_type}</td>
+                        <td>${item.activity_count}</td>
+                    `;
+                    tableBody.appendChild(tr);
+                });
+            }
+
+            function renderPagination() {
+                var pagination = document.getElementById('pagination');
+                pagination.innerHTML = '';
+
+                for (var i = 1; i <= totalPages; i++) {
+                    var li = document.createElement('li');
+                    li.classList.add('page-item');
+                    if (i === currentPage) {
+                        li.classList.add('active');
+                    }
+                    li.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
+                    pagination.appendChild(li);
+                }
+
+                var pageLinks = pagination.querySelectorAll('.page-link');
+                pageLinks.forEach(function(link) {
+                    link.addEventListener('click', function(event) {
+                        event.preventDefault();
+                        currentPage = parseInt(this.getAttribute('data-page'));
+                        renderTable(currentPage);
+                        renderPagination();
+                    });
+                });
+            }
+
+            renderTable(currentPage);
+            renderPagination();
+        }
+
+        // Load initial data
+        loadGroupStats();
+    });
+</script>
+{% endblock %}

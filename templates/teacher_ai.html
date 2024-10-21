@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}AI Grading{% endblock %}
+
+{% block content %}
+<h3>AI Grading</h3>
+<div class="row mb-3">
+    <div class="col-md-4">
+        <input type="text" id="studentIdInput" class="form-control" placeholder="Enter Student ID">
+    </div>
+    <div class="col-md-4">
+        <button class="btn btn-primary" id="askButton">Grade Student</button>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-12">
+        <h4>AI Grade:</h4>
+        <div id="answerOutput" class="border p-3" style="min-height: 100px;"></div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('askButton').addEventListener('click', function() {
+            var studentId = document.getElementById('studentIdInput').value;
+            var answerOutput = document.getElementById('answerOutput');
+            answerOutput.innerHTML = 'Loading...';
+
+            fetch('/ask_gpt4', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ student_id: studentId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                answerOutput.innerHTML = data.answer;
+            })
+            .catch(error => {
+                answerOutput.innerHTML = 'Error: ' + error.message;
+            });
+        });
+    });
+</script>
+{% endblock %}

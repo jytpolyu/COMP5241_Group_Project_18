@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}Teacher Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <select id="assignment" class="form-select">
+                {% for assignment in assignments %}
+                <option value="{{ assignment.assignment_id }}">{{ assignment.title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-8 text-end">
+            <button class="btn btn-info" id="contributionButton">View Contributions</button>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    Group Progress
+                </div>
+                <div class="card-body">
+                    <div id="progressChart" style="height: 400px;"></div>
+                    <div id="progressStats" class="mt-3"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Contribution Modal -->
+<div class="modal fade" id="contributionModal" tabindex="-1" aria-labelledby="contributionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="contributionModalLabel">Group Member Contributions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Group ID</th>
+                            <th>Member Name</th>
+                            <th>Contribution</th>
+                        </tr>
+                    </thead>
+                    <tbody id="contributionTableBody">
+                        <!-- Data will be populated by JavaScript -->
+                    </tbody>
+                </table>
+                <nav>
+                    <ul class="pagination justify-content-center" id="pagination">
+                        <!-- Pagination will be populated by JavaScript -->
+                    </ul>
+                </nav>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var progressChart = echarts.init(document.getElementById('progressChart'));
+
+        var chartOptions = {
+            title: {
+                text: 'Group Progress'
+            },
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'shadow'
+                }
+            },
+            legend: {
+                data: ['Progress', 'Average Progress']
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                data: []
+            },
+            yAxis: {
+                type: 'value',
+                max: 100
+            },
+            series: [
+                {
+                    name: 'Progress',
+                    type: 'bar',
+                    data: []
+                },
+                {
+                    name: 'Average Progress',
+                    type: 'line',
+                    data: []
+                }
+            ]
+        };
+
+        progressChart.setOption(chartOptions);
+
+        function updateCharts(data) {
+            var labels = [];
+            var progressData = [];
+            var avgProgressData = [];
+
+            data.data.forEach(function(item) {
+                if (!labels.includes(item.group_id)) {
+                    labels.push(item.group_id);
+                }
+                progressData.push(item.progress);
+            });
+
+            labels.forEach(function() {
+                avgProgressData.push(data.overall_avg_progress);
+            });
+
+            progressChart.setOption({
+                xAxis: {
+                    data: labels
+                },
+                series: [
+                    {
+                        name: 'Progress',
+                        data: progressData
+                    },
+                    {
+                        name: 'Average Progress',
+                        data: avgProgressData
+                    }
+                ]
+            });
+        }
+
+        function updateContributions(data) {
+            var tableBody = document.getElementById('contributionTableBody');
+            tableBody.innerHTML = '';
+
+            // Calculate total contributions for each group
+            var groupContributions = {};
+            data.data.forEach(function(item) {
+                if (!groupContributions[item.group_id]) {
+                    groupContributions[item.group_id] = 0;
+                }
+                groupContributions[item.group_id] += item.contribution;
+            });
+
+            data.data.forEach(function(item) {
+                var contributionPercentage = (item.contribution / groupContributions[item.group_id]) * 100;
+                var tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${item.group_id}</td>
+                    <td>${item.member_name}</td>
+                    <td>
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" style="width: ${contributionPercentage}%" aria-valuenow="${contributionPercentage}" aria-valuemin="0" aria-valuemax="100">${contributionPercentage.toFixed(2)}%</div>
+                        </div>
+                        ${item.contribution === 0 ? ' (Free-rider)' : ''}
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            // Update pagination
+            var pagination = document.getElementById('pagination');
+            pagination.innerHTML = '';
+            var totalPages = Math.ceil(data.total / data.per_page);
+            for (var i = 1; i <= totalPages; i++) {
+                var li = document.createElement('li');
+                li.classList.add('page-item');
+                if (i === data.page) {
+                    li.classList.add('active');
+                }
+                li.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
+                pagination.appendChild(li);
+            }
+
+            // Add event listeners to pagination links
+            var pageLinks = pagination.querySelectorAll('.page-link');
+            pageLinks.forEach(function(link) {
+                link.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    var page = parseInt(this.getAttribute('data-page'));
+                    loadContributions(page);
+                });
+            });
+        }
+
+        function loadContributions(page) {
+            var assignmentId = document.getElementById('assignment').value;
+            fetch(`/teacher/dashboard/contributions/${assignmentId}?page=${page}`)
+                .then(response => response.json())
+                .then(data => updateContributions(data));
+        }
+
+        document.getElementById('assignment').addEventListener('change', function() {
+            var assignmentId = this.value;
+            fetch(`/teacher/dashboard/data/${assignmentId}`)
+                .then(response => response.json())
+                .then(data => updateCharts(data));
+        });
+
+        document.getElementById('contributionButton').addEventListener('click', function() {
+            loadContributions(1);
+            new bootstrap.Modal(document.getElementById('contributionModal')).show();
+        });
+
+        // Load data for the initial assignment
+        var initialAssignmentId = document.getElementById('assignment').value;
+        fetch(`/teacher/dashboard/data/${initialAssignmentId}`)
+            .then(response => response.json())
+            .then(data => updateCharts(data));
+    });
+</script>
+{% endblock %}

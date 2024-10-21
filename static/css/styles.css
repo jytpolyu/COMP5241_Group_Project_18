@@ -1,0 +1,134 @@
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #f8f9fa;
+    color: #212529;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+#wrapper {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+}
+
+#sidebar-wrapper {
+    min-height: 100vh;
+    width: 250px;
+    border-right: 1px solid #dee2e6;
+    position: relative;
+}
+
+#sidebar-wrapper .sidebar-heading {
+    padding: 0.875rem 1.25rem;
+    font-size: 1.2rem;
+}
+
+#sidebar-wrapper .list-group {
+    width: 100%;
+}
+
+#page-content-wrapper {
+    flex: 1;
+    padding: 0;
+    margin: 0;
+    transition: margin 0.25s ease-out;
+}
+
+#wrapper.toggled #sidebar-wrapper {
+    margin-left: -250px;
+}
+
+#wrapper.toggled #page-content-wrapper {
+    margin-left: 0;
+}
+
+.navbar {
+    padding: 0.5rem 1rem;
+}
+
+.container-fluid {
+    padding: 20px;
+}
+
+h3 {
+    color: #343a40;
+}
+
+.table {
+    background-color: #ffffff;
+    border-radius: 8px;
+}
+
+.table th, .table td {
+    color: #212529;
+}
+
+.input-field input[type=text], .input-field input[type=password], .input-field select {
+    color: #212529;
+    border-bottom: 1px solid #343a40;
+}
+
+.input-field label {
+    color: #343a40;
+}
+
+.btn {
+    background-color: #343a40;
+    color: #ffffff;
+}
+
+.btn:hover {
+    background-color: #495057;
+}
+
+.red-text {
+    color: #dc3545 !important;
+}
+
+#scrollToTopBtn {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #343a40;
+    color: #ffffff;
+    border: none;
+    border-radius: 50%;
+    padding: 10px;
+    cursor: pointer;
+}
+
+#scrollToTopBtn:hover {
+    background-color: #495057;
+}
+
+.pagination .page-item .page-link {
+    color: #343a40;
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+}
+
+.pagination .page-item.active .page-link {
+    color: #ffffff;
+    background-color: #343a40;
+    border-color: #343a40;
+}
+
+.pagination .page-item .page-link:hover {
+    color: #ffffff;
+    background-color: #495057;
+    border-color: #495057;
+}
+
+.logout-link {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+}
+
+.list-group-item.active {
+    background-color: #ffffff;
+    color: #000000;
+}

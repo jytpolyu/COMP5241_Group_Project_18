@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <style>
+        body, html {
+            height: 100%;
+            overflow: hidden; /* 禁用页面滚动 */
+        }
+    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body>
+    <div class="d-flex" id="wrapper">
+        <!-- Sidebar -->
+        <div class="bg-dark border-right" id="sidebar-wrapper">
+            <div class="sidebar-heading text-light">Teacher Management</div>
+            <div class="list-group list-group-flush">
+                {% if session.logged_in %}
+                    <a href="{{ url_for('teacher_dashboard') }}" class="list-group-item list-group-item-action bg-dark text-light {% if request.endpoint == 'teacher_dashboard' %}active{% endif %}">Dashboard</a>
+                    <a href="{{ url_for('teacher_group') }}" class="list-group-item list-group-item-action bg-dark text-light {% if request.endpoint == 'teacher_group' %}active{% endif %}">Group Stats</a>
+                    <a href="{{ url_for('teacher_student') }}" class="list-group-item list-group-item-action bg-dark text-light {% if request.endpoint == 'teacher_student' %}active{% endif %}">Student Stats</a>
+                    <a href="{{ url_for('teacher_ai') }}" class="list-group-item list-group-item-action bg-dark text-light {% if request.endpoint == 'teacher_ai' %}active{% endif %}">AI Grading</a>
+                {% endif %}
+            </div>
+            {% if session.logged_in %}
+            <a href="{{ url_for('logout') }}" class="list-group-item list-group-item-action bg-dark text-light logout-link">Logout</a>
+            {% endif %}
+        </div>
+        <!-- /#sidebar-wrapper -->
+
+        <!-- Page Content -->
+        <div id="page-content-wrapper">
+            <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom">
+                <button class="btn btn-light text-dark" id="menu-toggle">Toggle Menu</button>
+            </nav>
+            <div class="container-fluid mt-4">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+        <!-- /#page-content-wrapper -->
+    </div>
+    <!-- /#wrapper -->
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+</body>
+</html>
