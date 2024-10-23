@@ -12,6 +12,8 @@ Yuhao Bao
 
 #### Project Overview
 
+Python Flask + Javascript + Mysql
+
 This project is a Flask-based web application designed to help teachers manage student and group activities and grade students using the GPT-4 API. The application includes the following main features:
 
 1. User login and role management
@@ -42,21 +44,46 @@ This project is a Flask-based web application designed to help teachers manage s
 
 #### Project Structure
 
-```
-project/
-│
-├── app.py
-├── credentials.json
-├── templates/
-│   ├── base.html
-│   ├── login.html
-│   ├── teacher_student.html
-│   ├── teacher_group.html
-│   ├── teacher_ai.html
-│   └── student.html
-└── static/
-    └── style.css
-```
+.gitignore
+app.py
+credentials.csv
+db_config.py
+myenv/
+    Include/
+    Lib/
+        site-packages/
+            __pycache__/
+            ...
+    pyvenv.cfg
+    Scripts/
+        activate
+        activate.bat
+        Activate.ps1
+        deactivate.bat
+        f2py.exe
+        flask.exe
+        normalizer.exe
+        numpy-config.exe
+        pip.exe
+        pip3.12.exe
+        pip3.exe
+        python.exe
+        pythonw.exe
+README.md
+sql
+static/
+    css/
+        styles.css
+    js/
+        scripts.js
+templates/
+    base.html
+    login.html
+    student.html
+    teacher_ai.html
+    teacher_dashboard.html
+    teacher_group.html
+    teacher_student.html
 
 #### API Endpoints
 
@@ -107,6 +134,7 @@ project/
 - **Parameters**:
   - `student_id`: Student ID
 - **Description**: Retrieves activity data for the specified student and grades them using the GPT-4 API.
+- **Prompt**:Use prompt to ask AI for
 
 #### Database Query Example
 
