@@ -14,18 +14,83 @@
         </div>
         <div class="col-md-8 text-end">
             <button class="btn btn-info" id="contributionButton">View Contributions</button>
+            <button class="btn btn-warning" id="editScoreMapButton">Edit Score Map</button>
+            <button class="btn btn-secondary" id="showStatsButton">Statistics</button>
         </div>
     </div>
     <div class="row">
         <div class="col-md-12">
             <div class="card">
                 <div class="card-header">
-                    Group Progress
+                    Simple rating
                 </div>
                 <div class="card-body">
-                    <div id="progressChart" style="height: 400px;"></div>
-                    <div id="progressStats" class="mt-3"></div>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <h5>Best Student</h5>
+                            <p id="bestStudent" data-student-id="">Loading...</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h5>Worst Student</h5>
+                            <p id="worstStudent" data-student-id="">Loading...</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h5>Most Lazy Student</h5>
+                            <p id="mostLazyStudent" data-student-id="">Loading...</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h5>Most DDL Fighter</h5>
+                            <p id="mostDdlFighter" data-student-id="">Loading...</p>
+                        </div>
+                    </div>
                 </div>
+            </div>
+        </div>
+    </div>
+    <!-- Combined chart -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    Student Activity Comparison
+                </div>
+                <div class="card-body">
+                    <div id="combinedChart" style="width: 100%; height: 400px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Modal -->
+<div class="modal fade" id="statsModal" tabindex="-1" aria-labelledby="statsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="statsModalLabel">Statistics</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Statistic</th>
+                            <th>Commit</th>
+                            <th>Issue</th>
+                            <th>Pull Request</th>
+                            <th>Comment</th>
+                            <th>Task Completion</th>
+                            <th>Project Board</th>
+                            <th>Code Change</th>
+                            <th>Assigned Issue</th>
+                            <th>Milestone</th>
+                            <th>Bug Report</th>
+                        </tr>
+                    </thead>
+                    <tbody id="statsTableBody">
+                        <!-- 动态填充统计信息 -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -52,11 +117,33 @@
                         <!-- Data will be populated by JavaScript -->
                     </tbody>
                 </table>
-                <nav>
-                    <ul class="pagination justify-content-center" id="pagination">
-                        <!-- Pagination will be populated by JavaScript -->
-                    </ul>
-                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailModalLabel">Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Activity Type</th>
+                            <th>Activity Date</th>
+                            <th>Activity Detail</th>
+                        </tr>
+                    </thead>
+                    <tbody id="detailTableBody">
+                        <!-- 动态填充详细信息 -->
+                    </tbody>
+                </table>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -65,165 +152,296 @@
     </div>
 </div>
 
+<!-- Edit Score Map Modal -->
+<div class="modal fade" id="editScoreMapModal" tabindex="-1" aria-labelledby="editScoreMapModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editScoreMapModalLabel">Edit Score Map</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="scoreMapForm">
+                    <div class="mb-3">
+                        <label for="commitScore" class="form-label">Commit</label>
+                        <input type="number" class="form-control" id="commitScore" name="commit" value="10">
+                    </div>
+                    <div class="mb-3">
+                        <label for="issueScore" class="form-label">Issue</label>
+                        <input type="number" class="form-control" id="issueScore" name="issue" value="5">
+                    </div>
+                    <div class="mb-3">
+                        <label for="pullRequestScore" class="form-label">Pull Request</label>
+                        <input type="number" class="form-control" id="pullRequestScore" name="pull_request" value="8">
+                    </div>
+                    <div class="mb-3">
+                        <label for="commentScore" class="form-label">Comment</label>
+                        <input type="number" class="form-control" id="commentScore" name="comment" value="2">
+                    </div>
+                    <div class="mb-3">
+                        <label for="taskCompletionScore" class="form-label">Task Completion</label>
+                        <input type="number" class="form-control" id="taskCompletionScore" name="task_completion" value="7">
+                    </div>
+                    <div class="mb-3">
+                        <label for="projectBoardScore" class="form-label">Project Board</label>
+                        <input type="number" class="form-control" id="projectBoardScore" name="project_board" value="3">
+                    </div>
+                    <div class="mb-3">
+                        <label for="codeChangeScore" class="form-label">Code Change</label>
+                        <input type="number" class="form-control" id="codeChangeScore" name="code_change" value="6">
+                    </div>
+                    <div class="mb-3">
+                        <label for="assignedIssueScore" class="form-label">Assigned Issue</label>
+                        <input type="number" class="form-control" id="assignedIssueScore" name="assigned_issue" value="4">
+                    </div>
+                    <div class="mb-3">
+                        <label for="milestoneScore" class="form-label">Milestone</label>
+                        <input type="number" class="form-control" id="milestoneScore" name="milestone" value="9">
+                    </div>
+                    <div class="mb-3">
+                        <label for="bugReportScore" class="form-label">Bug Report</label>
+                        <input type="number" class="form-control" id="bugReportScore" name="bug_report" value="5">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 引入 ECharts 库 -->
 <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        var progressChart = echarts.init(document.getElementById('progressChart'));
+        function loadDashboard(assignmentId) {
+            fetch(`/get_dashboard_data_v2/${assignmentId}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('bestStudent').textContent = data.best_student;
+                    document.getElementById('bestStudent').setAttribute('data-student-id', data.best_student);
+                    document.getElementById('worstStudent').textContent = data.worst_student;
+                    document.getElementById('worstStudent').setAttribute('data-student-id', data.worst_student);
+                    document.getElementById('mostLazyStudent').textContent = data.most_lazy_student;
+                    document.getElementById('mostLazyStudent').setAttribute('data-student-id', data.most_lazy_student);
+                    document.getElementById('mostDdlFighter').textContent = data.most_ddl_fighter;
+                    document.getElementById('mostDdlFighter').setAttribute('data-student-id', data.most_ddl_fighter);
+                });
 
-        var chartOptions = {
-            title: {
-                text: 'Group Progress'
-            },
-            tooltip: {
-                trigger: 'axis',
-                axisPointer: {
-                    type: 'shadow'
-                }
-            },
-            legend: {
-                data: ['Progress', 'Average Progress']
-            },
-            grid: {
-                left: '3%',
-                right: '4%',
-                bottom: '3%',
-                containLabel: true
-            },
-            xAxis: {
-                type: 'category',
-                data: []
-            },
-            yAxis: {
-                type: 'value',
-                max: 100
-            },
-            series: [
-                {
-                    name: 'Progress',
-                    type: 'bar',
-                    data: []
-                },
-                {
-                    name: 'Average Progress',
-                    type: 'line',
-                    data: []
-                }
-            ]
-        };
+            fetch(`/get_chart_data/${assignmentId}`)
+                .then(response => response.json())
+                .then(data => {
+                    updateCharts(data);
+                });
+        }
 
-        progressChart.setOption(chartOptions);
+        function fetchDetails(studentId) {
+            if (!studentId) {
+                alert('Student ID is missing.');
+                return;
+            }
+            fetch(`/get_student_activity_details?student_id=${studentId}`)
+                .then(response => response.json())
+                .then(data => {
+                    var detailTableBody = document.getElementById('detailTableBody');
+                    detailTableBody.innerHTML = '';
+                    data.activities.forEach(activity => {
+                        var row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${activity.student_id}</td>
+                            <td>${activity.activity_type}</td>
+                            <td>${activity.activity_date}</td>
+                            <td>${activity.activity_detail}</td>
+                        `;
+                        detailTableBody.appendChild(row);
+                    });
+                    new bootstrap.Modal(document.getElementById('detailModal')).show();
+                });
+        }
+
+        function loadContributions(assignmentId) {
+            fetch(`/teacher/dashboard/contributions/${assignmentId}`)
+                .then(response => response.json())
+                .then(data => {
+                    var contributionTableBody = document.getElementById('contributionTableBody');
+                    contributionTableBody.innerHTML = '';
+                    data.contributions.forEach(contribution => {
+                        var row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${contribution.group_id}</td>
+                            <td>${contribution.member_name}</td>
+                            <td>
+                                <div class="progress">
+                                    <div class="progress-bar" role="progressbar" style="width: ${contribution.contribution_percentage.toFixed(2)}%;" aria-valuenow="${contribution.contribution_percentage.toFixed(2)}" aria-valuemin="0" aria-valuemax="100">${contribution.contribution_percentage.toFixed(2)}%</div>
+                                </div>
+                            </td>
+                        `;
+                        contributionTableBody.appendChild(row);
+                    });
+                    new bootstrap.Modal(document.getElementById('contributionModal')).show();
+                });
+        }
 
         function updateCharts(data) {
-            var labels = [];
-            var progressData = [];
-            var avgProgressData = [];
+            var chartDom = document.getElementById('combinedChart');
+            var myChart = echarts.init(chartDom);
+            var option;
 
-            data.data.forEach(function(item) {
-                if (!labels.includes(item.group_id)) {
-                    labels.push(item.group_id);
-                }
-                progressData.push(item.progress);
-            });
+            var studentIds = Object.keys(data.student_activity_details);
+            var activityTypes = Object.keys(data.activity_stats);
 
-            labels.forEach(function() {
-                avgProgressData.push(data.overall_avg_progress);
-            });
-
-            progressChart.setOption({
-                xAxis: {
-                    data: labels
-                },
-                series: [
-                    {
-                        name: 'Progress',
-                        data: progressData
+            var series = activityTypes.map(activityType => {
+                return {
+                    name: activityType,
+                    type: 'bar',
+                    stack: 'total',
+                    label: {
+                        show: true
                     },
-                    {
-                        name: 'Average Progress',
-                        data: avgProgressData
+                    emphasis: {
+                        focus: 'series'
+                    },
+                    data: studentIds.map(studentId => data.student_activity_details[studentId][activityType] || 0)
+                };
+            });
+
+            option = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'shadow'
                     }
-                ]
+                },
+                legend: {
+                    data: activityTypes
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: studentIds,
+                    name: 'Students'
+                },
+                yAxis: {
+                    type: 'value',
+                    name: 'Activity Count'
+                },
+                series: series
+            };
+
+            myChart.setOption(option);
+
+            myChart.on('click', function (params) {
+                var studentId = params.name;
+                fetchDetails(studentId);
             });
         }
 
-        function updateContributions(data) {
-            var tableBody = document.getElementById('contributionTableBody');
-            tableBody.innerHTML = '';
+        function showStatsChart(data) {
+            var statsTableBody = document.getElementById('statsTableBody');
+            statsTableBody.innerHTML = '';
 
-            // Calculate total contributions for each group
-            var groupContributions = {};
-            data.data.forEach(function(item) {
-                if (!groupContributions[item.group_id]) {
-                    groupContributions[item.group_id] = 0;
-                }
-                groupContributions[item.group_id] += item.contribution;
+            var activityTypes = Object.keys(data.activity_stats);
+
+            var maxRow = '<tr><td>Max</td>';
+            var minRow = '<tr><td>Min</td>';
+            var avgRow = '<tr><td>Avg</td>';
+
+            activityTypes.forEach(function(activityType) {
+                var stats = data.activity_stats[activityType];
+                maxRow += '<td>' + stats.max + '</td>';
+                minRow += '<td>' + stats.min + '</td>';
+                avgRow += '<td>' + stats.avg.toFixed(2) + '</td>';
             });
 
-            data.data.forEach(function(item) {
-                var contributionPercentage = (item.contribution / groupContributions[item.group_id]) * 100;
-                var tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${item.group_id}</td>
-                    <td>${item.member_name}</td>
-                    <td>
-                        <div class="progress">
-                            <div class="progress-bar" role="progressbar" style="width: ${contributionPercentage}%" aria-valuenow="${contributionPercentage}" aria-valuemin="0" aria-valuemax="100">${contributionPercentage.toFixed(2)}%</div>
-                        </div>
-                        ${item.contribution === 0 ? ' (Free-rider)' : ''}
-                    </td>
-                `;
-                tableBody.appendChild(tr);
-            });
+            maxRow += '</tr>';
+            minRow += '</tr>';
+            avgRow += '</tr>';
 
-            // Update pagination
-            var pagination = document.getElementById('pagination');
-            pagination.innerHTML = '';
-            var totalPages = Math.ceil(data.total / data.per_page);
-            for (var i = 1; i <= totalPages; i++) {
-                var li = document.createElement('li');
-                li.classList.add('page-item');
-                if (i === data.page) {
-                    li.classList.add('active');
-                }
-                li.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
-                pagination.appendChild(li);
-            }
-
-            // Add event listeners to pagination links
-            var pageLinks = pagination.querySelectorAll('.page-link');
-            pageLinks.forEach(function(link) {
-                link.addEventListener('click', function(event) {
-                    event.preventDefault();
-                    var page = parseInt(this.getAttribute('data-page'));
-                    loadContributions(page);
-                });
-            });
+            statsTableBody.innerHTML = maxRow + minRow + avgRow;
         }
 
-        function loadContributions(page) {
+        document.getElementById('bestStudent').addEventListener('click', function() {
+            var studentId = this.getAttribute('data-student-id');
+            fetchDetails(studentId);
+        });
+
+        document.getElementById('worstStudent').addEventListener('click', function() {
+            var studentId = this.getAttribute('data-student-id');
+            fetchDetails(studentId);
+        });
+
+        document.getElementById('mostLazyStudent').addEventListener('click', function() {
+            var studentId = this.getAttribute('data-student-id');
+            fetchDetails(studentId);
+        });
+
+        document.getElementById('mostDdlFighter').addEventListener('click', function() {
+            var studentId = this.getAttribute('data-student-id');
+            fetchDetails(studentId);
+        });
+
+        document.getElementById('editScoreMapButton').addEventListener('click', function() {
+            new bootstrap.Modal(document.getElementById('editScoreMapModal')).show();
+        });
+
+        document.getElementById('showStatsButton').addEventListener('click', function() {
             var assignmentId = document.getElementById('assignment').value;
-            fetch(`/teacher/dashboard/contributions/${assignmentId}?page=${page}`)
+            fetch(`/get_chart_data/${assignmentId}`)
                 .then(response => response.json())
-                .then(data => updateContributions(data));
-        }
+                .then(data => {
+                    showStatsChart(data);
+                    new bootstrap.Modal(document.getElementById('statsModal')).show();
+                });
+        });
 
+        document.getElementById('scoreMapForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            var formData = new FormData(this);
+            var scoreMap = {};
+            formData.forEach((value, key) => {
+                scoreMap[key] = parseInt(value, 10);
+            });
+            fetch('/update_score_map', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(scoreMap)
+            }).then(response => {
+                if (response.ok) {
+                    alert('Score map updated successfully.');
+                    var editScoreMapModal = bootstrap.Modal.getInstance(document.getElementById('editScoreMapModal'));
+                    editScoreMapModal.hide();
+                    var assignmentId = document.getElementById('assignment').value;
+                    loadDashboard(assignmentId);  // 重新加载仪表板数据
+                } else {
+                    alert('Failed to update score map.');
+                }
+            });
+        });
+
+        // Load initial data
+        var initialAssignmentId = document.getElementById('assignment').value;
+        loadDashboard(initialAssignmentId);
+
+        // Existing code to load assignment data
         document.getElementById('assignment').addEventListener('change', function() {
             var assignmentId = this.value;
-            fetch(`/teacher/dashboard/data/${assignmentId}`)
-                .then(response => response.json())
-                .then(data => updateCharts(data));
+            loadDashboard(assignmentId);
         });
 
         document.getElementById('contributionButton').addEventListener('click', function() {
-            loadContributions(1);
-            new bootstrap.Modal(document.getElementById('contributionModal')).show();
+            var assignmentId = document.getElementById('assignment').value;
+            loadContributions(assignmentId);
         });
 
         // Load data for the initial assignment
-        var initialAssignmentId = document.getElementById('assignment').value;
-        fetch(`/teacher/dashboard/data/${initialAssignmentId}`)
-            .then(response => response.json())
-            .then(data => updateCharts(data));
+        loadDashboard(initialAssignmentId);
     });
 </script>
 {% endblock %}

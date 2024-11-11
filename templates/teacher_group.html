@@ -31,6 +31,7 @@
                     <th>Group ID</th>
                     <th>Activity Type</th>
                     <th>Activity Count</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody id="groupStatsTableBody">
@@ -64,6 +65,36 @@
                     </thead>
                     <tbody id="groupInfoTableBody">
                         <!-- Data will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Activity Detail Modal -->
+<div class="modal fade" id="activityDetailModal" tabindex="-1" aria-labelledby="activityDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="activityDetailModalLabel">Activity Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Activity ID</th>
+                            <th>Activity Type</th>
+                            <th>Activity Date</th>
+                            <th>Activity Detail</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activityDetailTableBody">
+                        <!-- 动态填充活动详情 -->
                     </tbody>
                 </table>
             </div>
@@ -133,8 +164,19 @@
                         <td>${item.group_id}</td>
                         <td>${item.activity_type}</td>
                         <td>${item.activity_count}</td>
+                        <td><button class="btn btn-primary btn-sm view-details" data-group-id="${item.group_id}" data-activity-type="${item.activity_type}">View Details</button></td>
                     `;
                     tableBody.appendChild(tr);
+                });
+
+                // 添加查看详情按钮的点击事件
+                var viewDetailButtons = tableBody.querySelectorAll('.view-details');
+                viewDetailButtons.forEach(function(button) {
+                    button.addEventListener('click', function() {
+                        var groupId = this.getAttribute('data-group-id');
+                        var activityType = this.getAttribute('data-activity-type');
+                        fetchActivityDetails(groupId, activityType);
+                    });
                 });
             }
 
@@ -165,6 +207,26 @@
 
             renderTable(currentPage);
             renderPagination();
+        }
+
+        function fetchActivityDetails(groupId, activityType) {
+            fetch(`/get_activity_details?group_id=${groupId}&activity_type=${activityType}`)
+                .then(response => response.json())
+                .then(data => {
+                    var activityDetailTableBody = document.getElementById('activityDetailTableBody');
+                    activityDetailTableBody.innerHTML = '';
+                    data.activities.forEach(activity => {
+                        var row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${activity.activity_id}</td>
+                            <td>${activity.activity_type}</td>
+                            <td>${activity.activity_date}</td>
+                            <td>${activity.activity_detail}</td>
+                        `;
+                        activityDetailTableBody.appendChild(row);
+                    });
+                    new bootstrap.Modal(document.getElementById('activityDetailModal')).show();
+                });
         }
 
         // Load initial data

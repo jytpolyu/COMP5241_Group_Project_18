@@ -200,3 +200,6 @@ ALTER TABLE activities ADD COLUMN assignment_id INT;
 
 -- 更新外键约束
 ALTER TABLE activities ADD FOREIGN KEY (assignment_id) REFERENCES assignments(assignment_id);
+
+-- 修改活动表，添加 assignment_id 列
+ALTER TABLE users ADD COLUMN github_email VARCHAR(50);

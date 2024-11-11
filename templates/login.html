@@ -7,7 +7,7 @@
     <div class="card" style="width: 100%; max-width: 500px; margin-top: -150px;">
         <div class="card-body">
             <h2 class="card-title text-center mb-4">Login</h2>
-            <form action="{{ url_for('login') }}" method="post">
+            <form id="login-form">
                 <div class="form-group text-center mb-3">
                     <label for="username">Username:</label>
                     <input type="text" class="form-control" id="username" name="username" required>
@@ -23,14 +23,81 @@
                         <option value="student">Student</option>
                     </select>
                 </div>
-                {% if error %}
-                <div class="alert alert-danger text-center mb-3">{{ error }}</div>
-                {% endif %}
-                <div class="text-center">
-                    <button type="submit" class="btn btn-primary btn-block">Login</button>
-                </div>
+                <button type="submit" class="btn btn-primary w-100">Login</button>
             </form>
         </div>
     </div>
 </div>
+
+<!-- Modal -->
+<div class="modal fade" id="courseModal" tabindex="-1" aria-labelledby="courseModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="courseModalLabel">Select Course</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="course-form">
+                    <div class="form-group">
+                        <label for="course_id">Course:</label>
+                        <select name="course_id" id="course_id" class="form-control">
+                            <!-- Options will be populated by JavaScript -->
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary mt-3">Submit</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('login-form').addEventListener('submit', function(event) {
+    event.preventDefault();
+    var formData = new FormData(this);
+    fetch('{{ url_for("validate_login") }}', {
+        method: 'POST',
+        body: formData
+    }).then(response => response.json())
+      .then(data => {
+          if (data.status === 'success') {
+              var role = formData.get('role');
+              if (role === 'teacher') {
+                  fetch('{{ url_for("get_courses") }}')
+                      .then(response => response.json())
+                      .then(data => {
+                          var courseSelect = document.getElementById('course_id');
+                          courseSelect.innerHTML = '';
+                          data.courses.forEach(course => {
+                              var option = document.createElement('option');
+                              option.value = course.course_id;
+                              option.textContent = course.course_name;
+                              courseSelect.appendChild(option);
+                          });
+                          var courseModal = new bootstrap.Modal(document.getElementById('courseModal'));
+                          courseModal.show();
+                          document.getElementById('course-form').addEventListener('submit', function(event) {
+                              event.preventDefault();
+                              var selectedCourseId = document.getElementById('course_id').value;
+                              formData.append('course_id', selectedCourseId);
+                              fetch('{{ url_for("login") }}', {
+                                  method: 'POST',
+                                  body: formData
+                              }).then(response => {
+                                  if (response.ok) {
+                                      window.location.href = '{{ url_for("teacher_dashboard") }}';
+                                  }
+                              });
+                          });
+                      });
+              } else {
+                  window.location.href = '{{ url_for("student") }}';
+              }
+          } else {
+              alert('Invalid credentials. Please try again.');
+          }
+      });
+});
+</script>
 {% endblock %}

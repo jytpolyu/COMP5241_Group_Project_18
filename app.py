@@ -41,6 +41,7 @@ def login():
         if user:
             session['logged_in'] = True
             session['role'] = role
+            session['user_id'] = user['user_id']
             session['username'] = username
             if role == 'teacher':
                 return redirect(url_for('teacher_dashboard'))
@@ -96,55 +97,46 @@ def get_dashboard_data(assignment_id):
 
 @app.route('/teacher/dashboard/contributions/<assignment_id>')
 def get_contributions(assignment_id):
-    if 'logged_in' not in session or session['role'] != 'teacher':
-        return redirect(url_for('login'))
-
-    page = request.args.get('page', 1, type=int)
-    per_page = 10
-    offset = (page - 1) * per_page
-
     connection = get_db_connection()
-    query = """
-    SELECT 
-        g.group_id,
-        u.username AS member_name,
-        COALESCE(SUM(a.activity_id), 0) AS contribution
-    FROM 
-        project_groups g
-    JOIN 
-        group_members gm ON g.group_id = gm.group_id
-    JOIN 
-        users u ON gm.student_id = u.user_id
-    LEFT JOIN 
-        activities a ON u.user_id = a.student_id AND a.assignment_id = g.assignment_id
-    WHERE 
-        g.assignment_id = %s
-    GROUP BY 
-        g.group_id, u.username
-    ORDER BY 
-        g.group_id, contribution DESC
-    LIMIT %s OFFSET %s
-    """
-    df = pd.read_sql(query, connection, params=(assignment_id, per_page, offset))
+    cursor = connection.cursor(dictionary=True)
 
-    total_query = """
-    SELECT COUNT(DISTINCT u.username) AS total
-    FROM 
-        project_groups g
-    JOIN 
-        group_members gm ON g.group_id = gm.group_id
-    JOIN 
-        users u ON gm.student_id = u.user_id
-    WHERE 
-        g.assignment_id = %s
+    # 获取每个小组成员的活动总数
+    query = """
+    SELECT g.group_id, u.username as member_name, COUNT(a.activity_id) as contribution_count
+    FROM activities a
+    JOIN users u ON a.student_id = u.user_id
+    JOIN project_groups g ON a.group_id = g.group_id
+    WHERE a.assignment_id = %s
+    GROUP BY g.group_id, u.username
     """
-    total = pd.read_sql(total_query, connection, params=(assignment_id,)).iloc[0]['total']
+    cursor.execute(query, (assignment_id,))
+    contributions = cursor.fetchall()
+
+    # 获取每个小组的活动总数
+    query_group_total = """
+    SELECT g.group_id, COUNT(a.activity_id) as group_total_count
+    FROM activities a
+    JOIN project_groups g ON a.group_id = g.group_id
+    WHERE a.assignment_id = %s
+    GROUP BY g.group_id
+    """
+    cursor.execute(query_group_total, (assignment_id,))
+    group_totals = cursor.fetchall()
+    group_totals_dict = {group['group_id']: group['group_total_count'] for group in group_totals}
+
+    # 计算每个小组成员的贡献百分比
+    for contribution in contributions:
+        group_id = contribution['group_id']
+        group_total_count = group_totals_dict.get(group_id, 1)  # 防止除以0
+        contribution['contribution_percentage'] = (contribution['contribution_count'] / group_total_count) * 100
+
+    # 按贡献百分比降序排序，并确保同一组的成员显示在一起
+    contributions.sort(key=lambda x: (x['group_id'], -x['contribution_percentage']))
+
+    cursor.close()
     connection.close()
 
-    # Convert int64 to int
-    df['contribution'] = df['contribution'].astype(int)
-    data = df.to_dict(orient='records')
-    return jsonify({'data': data, 'total': int(total), 'page': page, 'per_page': per_page})
+    return jsonify({'contributions': contributions})
 
 @app.route('/teacher/group')
 def teacher_group():
@@ -351,7 +343,6 @@ def ask_gpt4():
 
     return jsonify({'answer': answer, 'score': student_score})
 
-
 @app.route('/student')
 def student():
     if 'logged_in' not in session or session['role'] != 'student':
@@ -359,5 +350,330 @@ def student():
 
     return render_template('student.html')
 
+@app.route('/teacher/manage_students')
+def teacher_manage():
+    if 'logged_in' not in session or session['role'] != 'teacher':
+        return redirect(url_for('login'))
+    return render_template('manage_student.html')
+
+@app.route('/teacher/select_course', methods=['GET', 'POST'])
+def select_course():
+    if 'logged_in' not in session or session['role'] != 'teacher':
+        return redirect(url_for('login'))
+
+    connection = get_db_connection()
+    courses = pd.read_sql_query("SELECT * FROM courses", connection)
+    connection.close()
+
+    if request.method == 'POST':
+        selected_course_id = request.form['course_id']
+        session['current_course_id'] = selected_course_id
+
+        return redirect(url_for('teacher_dashboard'))
+
+    return render_template('select_course.html', courses=courses.to_dict(orient='records'))
+
+@app.route('/get_courses')
+def get_courses():
+    if 'logged_in' not in session or session['role'] != 'teacher':
+        return jsonify({'courses': []})
+
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    # 获取当前教师的课程
+    query = """
+    SELECT c.course_id, c.course_name
+    FROM courses c
+    JOIN teacher_courses tc ON c.course_id = tc.course_id
+    WHERE tc.teacher_id = %s
+    """
+    print(query)
+    cursor.execute(query, (session['user_id'],))
+    courses = cursor.fetchall()
+
+    cursor.close()
+    connection.close()
+    print("courses", courses)
+    return jsonify({'courses': courses})
+
+@app.route('/validate_login', methods=['POST'])
+def validate_login():
+    username = request.form['username']
+    password = request.form['password']
+    role = request.form['role']
+
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    query = "SELECT * FROM users WHERE username = %s AND password = %s AND role = %s"
+    cursor.execute(query, (username, password, role))
+    user = cursor.fetchone()
+
+    cursor.close()
+    connection.close()
+
+    if user:
+        session['logged_in'] = True
+        session['user_id'] = user['user_id']
+        session['username'] = username
+        session['role'] = role
+        return jsonify({'status': 'success'})
+    else:
+        return jsonify({'status': 'failure'})
+
+@app.route('/get_activity_details')
+def get_activity_details():
+    group_id = request.args.get('group_id')
+    activity_type = request.args.get('activity_type')
+
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    query = """
+    SELECT activity_id, activity_type, activity_date, activity_detail
+    FROM activities
+    WHERE group_id = %s AND activity_type = %s
+    """
+    cursor.execute(query, (group_id, activity_type))
+    activities = cursor.fetchall()
+
+    cursor.close()
+    connection.close()
+
+    return jsonify({'activities': activities})
+
+@app.route('/get_student_activity_details')
+def get_student_activity_details():
+    student_id = request.args.get('student_id')
+    if not student_id:
+        return jsonify({'activities': []})
+
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    query = """
+    SELECT student_id, activity_id, activity_type, activity_date, activity_detail
+    FROM activities
+    WHERE student_id = %s
+    """
+    cursor.execute(query, (student_id,))
+    activities = cursor.fetchall()
+
+    cursor.close()
+    connection.close()
+
+    return jsonify({'activities': activities})
+
+def calculate_activity_score(activity_type):
+    score_map = {
+        'commit': 10,
+        'issue': 5,
+        'pull_request': 8,
+        'comment': 2,
+        'task_completion': 7,
+        'project_board': 3,
+        'code_change': 6,
+        'assigned_issue': 4,
+        'milestone': 9,
+        'bug_report': 5
+    }
+    return score_map.get(activity_type, 0)
+
+@app.route('/update_score_map', methods=['POST'])
+def update_score_map():
+    new_score_map = request.json
+    # 更新 calculate_activity_score 函数中的 score_map
+    global calculate_activity_score
+    def calculate_activity_score(activity_type):
+        return new_score_map.get(activity_type, 0)
+    return jsonify({'status': 'success'})
+
+@app.route('/get_dashboard_data_v2/<assignment_id>')
+def get_dashboard_data_v2(assignment_id):
+    print("assignment_id", assignment_id)
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    # 获取所有活动数据
+    cursor.execute("""
+    SELECT student_id, activity_type
+    FROM activities
+    WHERE assignment_id = %s
+    """, (assignment_id,))
+    activities = cursor.fetchall()
+
+    # 计算每个学生的总分数和活动次数
+    student_scores = {}
+    student_activity_counts = {}
+    for activity in activities:
+        student_id = activity['student_id']
+        activity_type = activity['activity_type']
+        score = calculate_activity_score(activity_type)
+
+        if student_id not in student_scores:
+            student_scores[student_id] = 0
+            student_activity_counts[student_id] = 0
+
+        student_scores[student_id] += score
+        student_activity_counts[student_id] += 1
+
+    # 获取最好的学生（总活动分数最高）
+    best_student = max(student_scores, key=student_scores.get, default=None)
+
+    # 获取最差的学生（总活动分数最低）
+    worst_student = min(student_scores, key=student_scores.get, default=None)
+
+    # 获取最懒的学生（活动次数最少）
+    most_lazy_student = min(student_activity_counts, key=student_activity_counts.get, default=None)
+
+    # 获取最喜欢拖延的学生（最后一次活动日期最晚）
+    cursor.execute("""
+    SELECT student_id, MAX(activity_date) as last_activity_date
+    FROM activities
+    WHERE assignment_id = %s
+    GROUP BY student_id
+    ORDER BY last_activity_date DESC
+    LIMIT 1
+    """, (assignment_id,))
+    most_ddl_fighter = cursor.fetchone()
+
+    cursor.close()
+    connection.close()
+
+    return jsonify({
+        'best_student': best_student,
+        'worst_student': worst_student,
+        'most_lazy_student': most_lazy_student,
+        'most_ddl_fighter': most_ddl_fighter['student_id'] if most_ddl_fighter else None
+    })
+
+@app.route('/get_chart_data/<assignment_id>')
+def get_chart_data(assignment_id):
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    # 获取所有活动数据
+    cursor.execute("""
+    SELECT student_id, activity_type, COUNT(*) as activity_count
+    FROM activities
+    WHERE assignment_id = %s
+    GROUP BY student_id, activity_type
+    """, (assignment_id,))
+    activities = cursor.fetchall()
+
+    # 组织数据
+    student_activity_details = {}
+    activity_types = set()
+    for activity in activities:
+        student_id = activity['student_id']
+        activity_type = activity['activity_type']
+        activity_count = activity['activity_count']
+        activity_types.add(activity_type)
+
+        if student_id not in student_activity_details:
+            student_activity_details[student_id] = {}
+        student_activity_details[student_id][activity_type] = activity_count
+
+    # 计算统计信息
+    activity_stats = {activity_type: {'max': 0, 'min': float('inf'), 'sum': 0, 'count': 0} for activity_type in activity_types}
+    for student_id, activities in student_activity_details.items():
+        for activity_type, count in activities.items():
+            activity_stats[activity_type]['max'] = max(activity_stats[activity_type]['max'], count)
+            activity_stats[activity_type]['min'] = min(activity_stats[activity_type]['min'], count)
+            activity_stats[activity_type]['sum'] += count
+            activity_stats[activity_type]['count'] += 1
+
+    for activity_type, stats in activity_stats.items():
+        stats['avg'] = stats['sum'] / stats['count'] if stats['count'] > 0 else 0
+
+    cursor.close()
+    connection.close()
+
+    return jsonify({
+        'student_activity_details': student_activity_details,
+        'activity_stats': activity_stats
+    })
+
+@app.route('/get_students', methods=['GET'])
+def get_students():
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    offset = (page - 1) * per_page
+
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+    cursor.execute("SELECT COUNT(*) as total FROM users WHERE role = 'student'")
+    total = cursor.fetchone()['total']
+
+    cursor.execute("""
+        SELECT student_id, username, github_username, role, created_at, current_course_id, github_email
+        FROM users
+        WHERE role = 'student'
+        LIMIT %s OFFSET %s
+    """, (per_page, offset))
+    students = cursor.fetchall()
+    cursor.close()
+    connection.close()
+
+    return jsonify({
+        'students': students,
+        'total': total,
+        'page': page,
+        'per_page': per_page
+    })
+
+@app.route('/get_student/<student_id>', methods=['GET'])
+def get_student(student_id):
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+    cursor.execute("SELECT student_id, username, github_username, role, created_at, current_course_id, github_email FROM users WHERE student_id = %s", (student_id,))
+    student = cursor.fetchone()
+    cursor.close()
+    connection.close()
+    return jsonify({'student': student})
+
+@app.route('/add_student', methods=['POST'])
+def add_student():
+    student_data = request.json
+    connection = get_db_connection()
+    cursor = connection.cursor()
+    cursor.execute("""
+        INSERT INTO users (student_id, username, password, github_username, role, created_at, current_course_id, github_email)
+        VALUES (%s, %s, %s, %s, %s, NOW(), %s, %s)
+    """, (student_data['student_id'], student_data['username'], student_data['password'], student_data['github_username'], student_data['role'], student_data['current_course_id'], student_data['github_email']))
+    connection.commit()
+    cursor.close()
+    connection.close()
+    return jsonify({'status': 'success'})
+
+@app.route('/update_student/<student_id>', methods=['PUT'])
+def update_student(student_id):
+    student_data = request.json
+    connection = get_db_connection()
+    cursor = connection.cursor()
+    cursor.execute("""
+        UPDATE users
+        SET username = %s, github_username = %s, role = %s, current_course_id = %s, github_email = %s
+        WHERE student_id = %s
+    """, (student_data['username'], student_data['github_username'], student_data['role'], student_data['current_course_id'], student_data['github_email'], student_id))
+    connection.commit()
+    cursor.close()
+    connection.close()
+    return jsonify({'status': 'success'})
+
+@app.route('/delete_student/<student_id>', methods=['DELETE'])
+def delete_student(student_id):
+    connection = get_db_connection()
+    cursor = connection.cursor()
+    cursor.execute("DELETE FROM users WHERE student_id = %s", (student_id,))
+    connection.commit()
+    cursor.close()
+    connection.close()
+    return jsonify({'status': 'success'})
+
+
 if __name__ == '__main__':
     app.run(debug=True)
+
+
