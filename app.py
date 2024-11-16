@@ -3,6 +3,9 @@ from db_config import get_db_connection
 import pandas as pd
 import requests
 import json
+import random
+import datetime
+import time
 
 
 app = Flask(__name__)
@@ -672,6 +675,78 @@ def delete_student(student_id):
     connection.close()
     return jsonify({'status': 'success'})
 
+@app.route('/get_student_info', methods=['GET'])
+def get_student_info():
+    student_id = session.get('user_id')
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+    cursor.execute("SELECT username, password, github_username, github_email FROM users WHERE user_id = %s", (student_id,))
+    student = cursor.fetchone()
+    cursor.close()
+    connection.close()
+    return jsonify(student)
+
+@app.route('/update_student_info', methods=['PUT'])
+def update_student_info():
+    student_id = session.get('user_id')
+    student_data = request.json
+    connection = get_db_connection()
+    cursor = connection.cursor()
+    cursor.execute("""
+        UPDATE users
+        SET password = %s, github_username = %s, github_email = %s
+        WHERE user_id = %s
+    """, (student_data['password'], student_data['github_username'], student_data['github_email'], student_id))
+    connection.commit()
+    cursor.close()
+    connection.close()
+    return jsonify({'status': 'success'})
+
+
+@app.route('/fetch_github_data', methods=['POST'])
+def fetch_github_data():
+    # 模拟从 GitHub 接口读取数据
+    time.sleep(5)  # 模拟延迟
+
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    # 获取有效的 assignment_id
+    cursor.execute("SELECT assignment_id FROM assignments")
+    assignments = cursor.fetchall()
+    assignment_ids = [assignment['assignment_id'] for assignment in assignments]
+
+    # 生成随机的假数据
+    activity_types = ['commit', 'pull_request', 'issue', 'comment']
+    activity_details = ['Fixed a bug', 'Added a new feature', 'Opened an issue', 'Commented on an issue']
+    github_data = []
+
+    for i in range(10):  # 生成10条假数据
+        student_id = random.randint(1, 20)
+        activity_type = random.choice(activity_types)
+        activity_detail = random.choice(activity_details)
+        activity_date = datetime.date.today() - datetime.timedelta(days=random.randint(0, 30))
+        group_id = random.randint(1, 5)
+        assignment_id = random.choice(assignment_ids)  # 使用有效的 assignment_id
+        github_data.append({
+            'student_id': student_id,
+            'activity_type': activity_type,
+            'activity_detail': activity_detail,
+            'activity_date': activity_date,
+            'group_id': group_id,
+            'assignment_id': assignment_id
+        })
+
+    for activity in github_data:
+        cursor.execute("""
+            INSERT INTO activities (group_id, student_id, activity_type, activity_detail, activity_date, created_at, assignment_id)
+            VALUES (%s, %s, %s, %s, %s, NOW(), %s)
+        """, (activity['group_id'], activity['student_id'], activity['activity_type'], activity['activity_detail'], activity['activity_date'], activity['assignment_id']))
+    connection.commit()
+    cursor.close()
+    connection.close()
+
+    return jsonify({'status': 'success'})
 
 if __name__ == '__main__':
     app.run(debug=True)

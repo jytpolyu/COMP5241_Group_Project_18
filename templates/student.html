@@ -1,8 +1,72 @@
-{% extends "base.html" %}
+{% extends "base2.html" %}
 
 {% block title %}Student Page{% endblock %}
 
 {% block content %}
-<h3>Student Page</h3>
-<p>This feature is not implemented yet.</p>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <h3>Student Page</h3>
+            <form id="studentForm">
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="username" name="username" readonly>
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" class="form-control" id="password" name="password">
+                </div>
+                <div class="mb-3">
+                    <label for="githubUsername" class="form-label">GitHub Username</label>
+                    <input type="text" class="form-control" id="githubUsername" name="github_username">
+                </div>
+                <div class="mb-3">
+                    <label for="githubEmail" class="form-label">GitHub Email</label>
+                    <input type="email" class="form-control" id="githubEmail" name="github_email">
+                </div>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        function loadStudentInfo() {
+            fetch('/get_student_info')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('username').value = data.username;
+                    document.getElementById('password').value = data.password;
+                    document.getElementById('githubUsername').value = data.github_username;
+                    document.getElementById('githubEmail').value = data.github_email;
+                });
+        }
+
+        document.getElementById('studentForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            var formData = new FormData(this);
+            var studentData = {};
+            formData.forEach((value, key) => {
+                studentData[key] = value;
+            });
+            fetch('/update_student_info', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(studentData)
+            }).then(response => {
+                if (response.ok) {
+                    alert('Information updated successfully.');
+                } else {
+                    alert('Failed to update information.');
+                }
+            });
+        });
+
+        // Load initial student information
+        loadStudentInfo();
+    });
+</script>
 {% endblock %}

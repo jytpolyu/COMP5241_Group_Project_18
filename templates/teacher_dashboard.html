@@ -16,6 +16,7 @@
             <button class="btn btn-info" id="contributionButton">View Contributions</button>
             <button class="btn btn-warning" id="editScoreMapButton">Edit Score Map</button>
             <button class="btn btn-secondary" id="showStatsButton">Statistics</button>
+            <button class="btn btn-info" id="fetchGithubDataButton">Fetch GitHub Data</button> <!-- 新按钮 -->
         </div>
     </div>
     <div class="row">
@@ -209,6 +210,23 @@
     </div>
 </div>
 
+<!-- Progress Modal -->
+<div class="modal fade" id="progressModal" tabindex="-1" aria-labelledby="progressModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="progressModalLabel">Fetching GitHub Data</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="progress">
+                    <div class="progress-bar" role="progressbar" style="width: 0%;" id="progressBar">0%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- 引入 ECharts 库 -->
 <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
 
@@ -389,6 +407,37 @@
             new bootstrap.Modal(document.getElementById('editScoreMapModal')).show();
         });
 
+        document.getElementById('fetchGithubDataButton').addEventListener('click', function() {
+            var progressModal = new bootstrap.Modal(document.getElementById('progressModal'));
+            progressModal.show();
+
+            var progressBar = document.getElementById('progressBar');
+            var progress = 0;
+
+            function updateProgress() {
+                progress += 10;
+                progressBar.style.width = progress + '%';
+                progressBar.textContent = progress + '%';
+
+                if (progress < 100) {
+                    setTimeout(updateProgress, 500);
+                } else {
+                    fetch('/fetch_github_data', {
+                        method: 'POST'
+                    }).then(response => {
+                        if (response.ok) {
+                            alert('GitHub data fetched and saved successfully.');
+                            location.reload();  // 刷新页面
+                        } else {
+                            alert('Failed to fetch GitHub data.');
+                        }
+                        progressModal.hide();
+                    });
+                }
+            }
+
+            updateProgress();
+        });
         document.getElementById('showStatsButton').addEventListener('click', function() {
             var assignmentId = document.getElementById('assignment').value;
             fetch(`/get_chart_data/${assignmentId}`)
