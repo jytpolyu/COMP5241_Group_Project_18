@@ -6,7 +6,10 @@ import json
 import random
 import datetime
 import time
-
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from flask import send_file
+import io
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -293,6 +296,61 @@ def teacher_ai():
     return render_template('teacher_ai.html')
 
 @app.route('/ask_gpt4', methods=['POST'])
+# def ask_gpt4():
+#     if 'logged_in' not in session or session['role'] != 'teacher':
+#         return redirect(url_for('login'))
+
+#     data = request.get_json()
+#     student_id = data.get('student_id')
+
+#     connection = get_db_connection()
+#     query = """
+#     SELECT 
+#         a.activity_type, 
+#         COUNT(a.activity_id) AS activity_count
+#     FROM 
+#         activities a
+#     WHERE 
+#         a.student_id = %s
+#     GROUP BY 
+#         a.activity_type
+#     """
+#     df = pd.read_sql_query(query, connection, params=(student_id,))
+#     connection.close()
+
+#     student_activities = df.to_dict(orient='records')
+
+#     total_activities = sum([activity['activity_count'] for activity in student_activities])
+#     average_score = 50
+#     student_score = (total_activities / average_score) * 50
+
+#     prompt = f"Student activities: {json.dumps(student_activities)}. The average activity count is 50. Please grade the student based on their activity count. The student's score is {student_score}."
+
+#     headers = {
+#         'Authorization': f'Bearer {api_key}',
+#         'Content-Type': 'application/json'
+#     }
+
+#     payload = {
+#         "model": "gpt-4",
+#         "messages": [{"role": "user", "content": prompt}],
+#         "max_tokens": 100,
+#     }
+
+#     response = requests.post(api_url, headers=headers, json=payload)
+#     response_data = response.json()
+
+#     print(response_data)  # 打印响应数据以便调试
+
+#     if 'choices' in response_data and len(response_data['choices']) > 0:
+#         answer = response_data['choices'][0]['message']['content']
+#     else:
+#         answer = "Sorry, I couldn't get an answer from GPT-4."
+
+#     return jsonify({'answer': answer, 'score': student_score})
+
+
+@app.route('/ask_gpt4', methods=['POST'])
 def ask_gpt4():
     if 'logged_in' not in session or session['role'] != 'teacher':
         return redirect(url_for('login'))
@@ -300,6 +358,7 @@ def ask_gpt4():
     data = request.get_json()
     student_id = data.get('student_id')
 
+    # 获取学生活动数据
     connection = get_db_connection()
     query = """
     SELECT 
@@ -321,7 +380,15 @@ def ask_gpt4():
     average_score = 50
     student_score = (total_activities / average_score) * 50
 
-    prompt = f"Student activities: {json.dumps(student_activities)}. The average activity count is 50. Please grade the student based on their activity count. The student's score is {student_score}."
+    # GPT-4 Prompt
+    prompt = f"""
+    Student activities: {json.dumps(student_activities)}. 
+    The average activity count is 50. 
+    1. Grade the student based on their activity count. The student's score is {student_score}.
+    2. Analyze the student's code contributions and identify common issues (if any).
+    3. Generate a personalized study plan to improve their performance.
+    4. Provide specific improvement suggestions based on lower-performing dimensions.
+    """
 
     headers = {
         'Authorization': f'Bearer {api_key}',
@@ -331,20 +398,64 @@ def ask_gpt4():
     payload = {
         "model": "gpt-4",
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 100,
+        "max_tokens": 300,
     }
 
     response = requests.post(api_url, headers=headers, json=payload)
     response_data = response.json()
-
-    print(response_data)  # 打印响应数据以便调试
 
     if 'choices' in response_data and len(response_data['choices']) > 0:
         answer = response_data['choices'][0]['message']['content']
     else:
         answer = "Sorry, I couldn't get an answer from GPT-4."
 
-    return jsonify({'answer': answer, 'score': student_score})
+    try:
+        grade, issues, study_plan, suggestions = answer.split("\n\n")
+    except ValueError:
+        grade = answer
+        issues = "No issues detected or response incomplete."
+        study_plan = "No study plan available."
+        suggestions = "No suggestions available."
+
+    from reportlab.lib.pagesizes import letter
+    from reportlab.pdfgen import canvas
+    import io
+
+    buffer = io.BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=letter)
+    pdf.drawString(100, 750, f"Feedback Report for Student ID: {student_id}")
+    pdf.drawString(100, 720, f"Score: {student_score}")
+    pdf.drawString(100, 690, "Grade:")
+    pdf.drawString(120, 670, grade)
+
+    pdf.drawString(100, 640, "Code Issues:")
+    pdf.drawString(120, 620, issues)
+
+    pdf.drawString(100, 590, "Study Plan:")
+    pdf.drawString(120, 570, study_plan)
+
+    pdf.drawString(100, 540, "Suggestions:")
+    pdf.drawString(120, 520, suggestions)
+
+    pdf.save()
+    buffer.seek(0)
+
+    pdf_filename = f"feedback_{student_id}.pdf"
+    pdf_path = f"./static/reports/{pdf_filename}"
+
+    with open(pdf_path, "wb") as f:
+        f.write(buffer.getvalue())
+
+    return jsonify({
+        'grade': grade,
+        'issues': issues,
+        'study_plan': study_plan,
+        'suggestions': suggestions,
+        'score': student_score,
+        'pdf_link': f"/static/reports/{pdf_filename}"  
+    })
+
+
 
 @app.route('/student')
 def student():
