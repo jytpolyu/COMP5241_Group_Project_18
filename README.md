@@ -24,7 +24,7 @@ This project is a Flask-based web application designed to help teachers manage s
 
 1. **Install Dependencies**:
    ```shell
-   pip install flask pymysql pandas requests mysql-connector-python
+   pip install -r requirements.txt
    ```
 
 2. **Database Configuration**:
@@ -41,6 +41,14 @@ This project is a Flask-based web application designed to help teachers manage s
        "api_key": "your_api_key_here"
    }
    ```
+4. **Start Service**
+    ```
+    export FLASK_APP=app.py
+    export FLASK_ENV=development
+    flask run
+    ```
+
+
 
 #### Project Structure
 
@@ -123,18 +131,26 @@ templates/
 - **Method**: `GET`
 - **Description**: Retrieves group leader and member information.
 
-##### AI Grading
+#### AI Grading
 
 - **URL**: `/teacher/ai`
-- **Method**: `GET`
-- **Description**: Displays the AI grading page.
+  - **Method**: `GET`
+  - **Description**: Displays the AI grading page for inputting a student ID to evaluate their performance.
 
 - **URL**: `/ask_gpt4`
-- **Method**: `POST`
-- **Parameters**:
-  - `student_id`: Student ID
-- **Description**: Retrieves activity data for the specified student and grades them using the GPT-4 API.
-- **Prompt**:Use prompt to ask AI for
+  - **Method**: `POST`
+  - **Parameters**:
+    - `student_id` (string): The unique ID of the student to grade.
+  - **Description**:
+    - Retrieves the student's activity data from the database.
+    - Grades the student based on activity participation and analyzes their performance.
+    - Provides detailed feedback:
+      1. **Grade**: Overall performance score.
+      2. **Code Issues**: Identified problems in contributions.
+      3. **Study Plan**: Personalized plan to improve skills.
+      4. **Suggestions**: Specific recommendations for improvement.
+    - Generates a downloadable PDF report summarizing the results.
+
 
 #### Database Query Example
 

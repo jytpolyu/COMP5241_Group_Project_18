@@ -4,6 +4,7 @@
 
 {% block content %}
 <h3>AI Grading</h3>
+
 <div class="row mb-3">
     <div class="col-md-4">
         <input type="text" id="studentIdInput" class="form-control" placeholder="Enter Student ID">
@@ -12,19 +13,53 @@
         <button class="btn btn-primary" id="askButton">Grade Student</button>
     </div>
 </div>
-<div class="row">
+
+<div class="row mt-4">
     <div class="col-md-12">
         <h4>AI Grade:</h4>
-        <div id="answerOutput" class="border p-3" style="min-height: 100px;"></div>
+        <div id="gradeOutput" class="border p-3" style="min-height: 50px;"></div>
+    </div>
+    <div class="col-md-12 mt-3">
+        <h4>Issues:</h4>
+        <div id="issuesOutput" class="border p-3" style="min-height: 50px;"></div>
+    </div>
+    <div class="col-md-12 mt-3">
+        <h4>Study Plan:</h4>
+        <div id="studyPlanOutput" class="border p-3" style="min-height: 50px;"></div>
+    </div>
+    <div class="col-md-12 mt-3">
+        <h4>Suggestions:</h4>
+        <div id="suggestionsOutput" class="border p-3" style="min-height: 50px;"></div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-4">
+        <button class="btn btn-secondary" id="downloadPdfButton" style="display: none;">Download Feedback as PDF</button>
     </div>
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        document.getElementById('askButton').addEventListener('click', function() {
-            var studentId = document.getElementById('studentIdInput').value;
-            var answerOutput = document.getElementById('answerOutput');
-            answerOutput.innerHTML = 'Loading...';
+    document.addEventListener('DOMContentLoaded', function () {
+        const askButton = document.getElementById('askButton');
+        const studentIdInput = document.getElementById('studentIdInput');
+        const gradeOutput = document.getElementById('gradeOutput');
+        const issuesOutput = document.getElementById('issuesOutput');
+        const studyPlanOutput = document.getElementById('studyPlanOutput');
+        const suggestionsOutput = document.getElementById('suggestionsOutput');
+        const downloadPdfButton = document.getElementById('downloadPdfButton');
+
+        askButton.addEventListener('click', function () {
+            const studentId = studentIdInput.value.trim();
+            if (!studentId) {
+                alert("Please enter a valid Student ID.");
+                return;
+            }
+
+            gradeOutput.innerHTML = 'Loading...';
+            issuesOutput.innerHTML = 'Loading...';
+            studyPlanOutput.innerHTML = 'Loading...';
+            suggestionsOutput.innerHTML = 'Loading...';
 
             fetch('/ask_gpt4', {
                 method: 'POST',
@@ -35,10 +70,26 @@
             })
             .then(response => response.json())
             .then(data => {
-                answerOutput.innerHTML = data.answer;
+                gradeOutput.innerHTML = data.grade || 'No grade available.';
+                issuesOutput.innerHTML = data.issues || 'No issues detected.';
+                studyPlanOutput.innerHTML = data.study_plan || 'No study plan available.';
+                suggestionsOutput.innerHTML = data.suggestions || 'No suggestions available.';
+
+                if (data.pdf_link) {
+                    downloadPdfButton.style.display = 'inline-block';
+                    downloadPdfButton.onclick = () => {
+                        window.location.href = data.pdf_link;
+                    };
+                } else {
+                    downloadPdfButton.style.display = 'none';
+                }
             })
             .catch(error => {
-                answerOutput.innerHTML = 'Error: ' + error.message;
+                gradeOutput.innerHTML = 'Error: ' + error.message;
+                issuesOutput.innerHTML = '';
+                studyPlanOutput.innerHTML = '';
+                suggestionsOutput.innerHTML = '';
+                downloadPdfButton.style.display = 'none';
             });
         });
     });

@@ -1,0 +1,7 @@
+Flask
+Flask-SQLAlchemy
+mysql-connector-python
+pandas
+requests
+pymysql
+reportlab
